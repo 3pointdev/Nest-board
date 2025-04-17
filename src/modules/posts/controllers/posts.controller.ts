@@ -7,11 +7,13 @@ import {
   Body,
   Param,
   UsePipes,
+  Query,
 } from '@nestjs/common';
 import { PostsService } from '../services/posts.service';
 import { CreatePostDto } from '../dtos/create-post.dto';
 import { UpdatePostDto } from '../dtos/update-post.dto';
 import { ValidationPipe } from '../../../common/pipes/validation.pipe';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
 @Controller('posts')
 export class PostsController {
@@ -24,8 +26,8 @@ export class PostsController {
   }
 
   @Get()
-  findAll() {
-    return this.postsService.findAll();
+  findAll(@Query() paginationDto: PaginationDto) {
+    return this.postsService.findAll(paginationDto);
   }
 
   @Get(':id')

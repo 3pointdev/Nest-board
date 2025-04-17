@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { typeOrmConfig } from './database/typeorm.config';
 import { PostsModule } from './modules/posts/posts.module';
 import { CommentsModule } from './modules/comments/comments.module';
+import { PingModule } from './modules/ping/ping.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { CommentsModule } from './modules/comments/comments.module';
       useFactory: typeOrmConfig,
       inject: [ConfigService],
     }),
+    PingModule,
     PostsModule,
     CommentsModule,
   ],
