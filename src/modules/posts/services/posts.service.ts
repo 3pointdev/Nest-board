@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Post } from '../entities/post.entity';
@@ -17,16 +21,17 @@ export class PostsService {
   async create(createPostDto: CreatePostDto): Promise<Post> {
     const { title, content } = createPostDto;
     if (!title || !content) {
-      throw new NotFoundException(`No title or content.`);
+      throw new BadRequestException(`No title or content.`);
     }
 
     if (content.length < 10) {
-      throw new NotFoundException(`Content must be at least 10 characters.`);
+      throw new BadRequestException(`Content must be at least 10 characters.`);
     }
 
     const post = this.postsRepository.create(createPostDto);
 
-    return this.postsRepository.save(post);
+    const savedPost = this.postsRepository.save(post);
+    return savedPost;
   }
 
   async findAll(
@@ -61,11 +66,11 @@ export class PostsService {
   async update(id: number, updatePostDto: UpdatePostDto): Promise<Post> {
     const { title, content } = updatePostDto;
     if (title && title.length < 5) {
-      throw new NotFoundException(`Title must be at least 5 characters.`);
+      throw new BadRequestException(`Title must be at least 5 characters.`);
     }
 
     if (content && content.length < 10) {
-      throw new NotFoundException(`Content must be at least 10 characters.`);
+      throw new BadRequestException(`Content must be at least 10 characters.`);
     }
 
     const post = await this.findOne(id);

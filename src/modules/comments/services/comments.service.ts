@@ -2,8 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Comment } from '../entities/comment.entity';
-import { CreateCommentDto } from '../dtos/create-comment.dto';
-import { UpdateCommentDto } from '../dtos/update-comment.dto';
+import { CommentDto } from '../dtos/comment.dto';
 import { PostsService } from '../../posts/services/posts.service';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { paginate, PaginatedResponse } from 'src/common/utils/pagination.util';
@@ -18,8 +17,8 @@ export class CommentsService {
 
   async create(
     parentId: number,
-    createCommentDto: CreateCommentDto,
-  ): Promise<Comment[]> {
+    createCommentDto: CommentDto,
+  ): Promise<Comment> {
     const { content } = createCommentDto;
     if (!content) {
       throw new NotFoundException(`No content.`);
@@ -35,9 +34,9 @@ export class CommentsService {
       post,
     });
 
-    await this.commentsRepository.save(comment);
+    const savedComment = await this.commentsRepository.save(comment);
 
-    return (await this.findAll(parentId, { page: 1, limit: 5 })).list;
+    return { id: savedComment.id, content: savedComment.content };
   }
 
   async findAll(
@@ -70,7 +69,7 @@ export class CommentsService {
   async update(
     parentId: number,
     id: number,
-    updateCommentDto: UpdateCommentDto,
+    updateCommentDto: CommentDto,
   ): Promise<Comment> {
     const { content } = updateCommentDto;
 

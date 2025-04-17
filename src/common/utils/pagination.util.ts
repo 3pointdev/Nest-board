@@ -1,7 +1,28 @@
+import { ApiProperty } from '@nestjs/swagger';
+
 export interface PaginatedResponse<T> {
   list: T[];
   total: number;
   page: number;
+  limit: number;
+}
+
+export class PaginatedResponseDto<T> {
+  @ApiProperty({
+    description: '조회 된 한 페이지 데이터 목록',
+    type: 'array',
+    items: { type: 'object' },
+    example: [],
+  })
+  list: T[];
+
+  @ApiProperty({ description: '데이터의 총 갯수', example: 10 })
+  total: number;
+
+  @ApiProperty({ description: '현재 페이지', example: 1 })
+  page: number;
+
+  @ApiProperty({ description: '한 페이지에 표시할 데이터 갯수', example: 5 })
   limit: number;
 }
 
