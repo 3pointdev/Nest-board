@@ -5,6 +5,8 @@ import { Comment } from '../entities/comment.entity';
 import { CreateCommentDto } from '../dtos/create-comment.dto';
 import { UpdateCommentDto } from '../dtos/update-comment.dto';
 import { PostsService } from '../../posts/services/posts.service';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
+import { paginate, PaginatedResponse } from 'src/common/utils/pagination.util';
 
 @Injectable()
 export class CommentsService {
@@ -15,51 +17,80 @@ export class CommentsService {
   ) {}
 
   async create(
-    postId: number,
+    parentId: number,
     createCommentDto: CreateCommentDto,
-  ): Promise<Comment> {
-    const post = await this.postsService.findOne(postId);
+  ): Promise<Comment[]> {
+    const { content } = createCommentDto;
+    if (!content) {
+      throw new NotFoundException(`No content.`);
+    }
+    if (content.length < 5) {
+      throw new NotFoundException(`Content must be at least 5 characters.`);
+    }
+
+    const post = await this.postsService.findOne(parentId);
+
     const comment = this.commentsRepository.create({
       ...createCommentDto,
       post,
     });
-    return this.commentsRepository.save(comment);
+
+    await this.commentsRepository.save(comment);
+
+    return (await this.findAll(parentId, { page: 1, limit: 5 })).list;
   }
 
-  async findAll(postId: number): Promise<Comment[]> {
-    await this.postsService.findOne(postId);
-    return this.commentsRepository.find({ where: { post: { id: postId } } });
-  }
-
-  async findOne(postId: number, id: number): Promise<Comment> {
-    await this.postsService.findOne(postId);
-    const comment = await this.commentsRepository.findOne({
-      where: { id, post: { id: postId } },
+  async findAll(
+    parentId: number,
+    paginationDto: PaginationDto,
+  ): Promise<PaginatedResponse<Comment>> {
+    await this.postsService.findOne(+parentId);
+    return paginate<Comment>(this.commentsRepository, paginationDto, {
+      where: { post: { id: parentId, isDeleted: false }, isDeleted: false },
+      order: { id: 'DESC' },
     });
-    if (!comment) {
-      throw new NotFoundException(`Comment with ID ${id} not found`);
+  }
+
+  async findOne(parentId: number, id: number): Promise<Comment> {
+    await this.postsService.findOne(parentId);
+
+    const comment = await this.commentsRepository.findOne({
+      where: { id, isDeleted: false },
+    });
+
+    if (!comment || comment.isDeleted) {
+      throw new NotFoundException(
+        `This comment does not exist or has already been deleted.`,
+      );
     }
+
     return comment;
   }
 
   async update(
-    postId: number,
+    parentId: number,
     id: number,
     updateCommentDto: UpdateCommentDto,
   ): Promise<Comment> {
-    const comment = await this.findOne(postId, id);
+    const { content } = updateCommentDto;
+
+    if (!content) {
+      throw new NotFoundException(`No content.`);
+    }
+
+    if (content && content.length < 5) {
+      throw new NotFoundException(`Content must be at least 5 characters.`);
+    }
+
+    const comment = await this.findOne(parentId, id);
+
     Object.assign(comment, updateCommentDto);
+
     return this.commentsRepository.save(comment);
   }
 
-  async delete(postId: number, id: number): Promise<void> {
-    await this.postsService.findOne(postId);
-    const result = await this.commentsRepository.delete({
-      id,
-      post: { id: postId },
-    });
-    if (result.affected === 0) {
-      throw new NotFoundException(`Comment with ID ${id} not found`);
-    }
+  async delete(parentId: number, id: number): Promise<void> {
+    await this.postsService.findOne(parentId);
+    await this.commentsRepository.update(id, { isDeleted: true });
   }
 }

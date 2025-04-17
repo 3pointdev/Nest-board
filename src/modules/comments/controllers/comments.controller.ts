@@ -7,47 +7,52 @@ import {
   Body,
   Param,
   UsePipes,
+  Query,
 } from '@nestjs/common';
 import { CommentsService } from '../services/comments.service';
 import { CreateCommentDto } from '../dtos/create-comment.dto';
 import { UpdateCommentDto } from '../dtos/update-comment.dto';
 import { ValidationPipe } from '../../../common/pipes/validation.pipe';
+import { PaginationDto } from 'src/common/dto/pagination.dto';
 
-@Controller('posts/:postId/comments')
+@Controller('posts/:parentId/comments')
 export class CommentsController {
   constructor(private readonly commentsService: CommentsService) {}
 
   @Post()
   @UsePipes(new ValidationPipe())
   create(
-    @Param('postId') postId: string,
+    @Param('parentId') parentId: number,
     @Body() createCommentDto: CreateCommentDto,
   ) {
-    return this.commentsService.create(+postId, createCommentDto);
+    return this.commentsService.create(+parentId, createCommentDto);
   }
 
   @Get()
-  findAll(@Param('postId') postId: string) {
-    return this.commentsService.findAll(+postId);
+  findAll(
+    @Param('parentId') parentId: number,
+    @Query() paginationDto: PaginationDto,
+  ) {
+    return this.commentsService.findAll(+parentId, paginationDto);
   }
 
   @Get(':id')
-  findOne(@Param('postId') postId: string, @Param('id') id: string) {
-    return this.commentsService.findOne(+postId, +id);
+  findOne(@Param('parentId') parentId: number, @Param('id') id: number) {
+    return this.commentsService.findOne(+parentId, +id);
   }
 
   @Put(':id')
   @UsePipes(new ValidationPipe())
   update(
-    @Param('postId') postId: string,
-    @Param('id') id: string,
+    @Param('parentId') parentId: number,
+    @Param('id') id: number,
     @Body() updateCommentDto: UpdateCommentDto,
   ) {
-    return this.commentsService.update(+postId, +id, updateCommentDto);
+    return this.commentsService.update(+parentId, +id, updateCommentDto);
   }
 
   @Delete(':id')
-  delete(@Param('postId') postId: string, @Param('id') id: string) {
-    return this.commentsService.delete(+postId, +id);
+  delete(@Param('parentId') parentId: number, @Param('id') id: number) {
+    return this.commentsService.delete(+parentId, +id);
   }
 }

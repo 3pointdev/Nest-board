@@ -1,5 +1,6 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
-import { Post } from '../../posts/entities/post.entity';
+import { Post } from 'src/modules/posts/entities/post.entity';
+import { Exclude } from 'class-transformer';
 
 @Entity()
 export class Comment {
@@ -8,6 +9,10 @@ export class Comment {
 
   @Column()
   content: string;
+
+  @Column({ default: false })
+  @Exclude()
+  isDeleted: boolean;
 
   @ManyToOne(() => Post, (post) => post.comments)
   post: Post;
