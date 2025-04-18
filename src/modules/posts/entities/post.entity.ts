@@ -13,6 +13,13 @@ export class Post {
   id: number;
 
   @ApiProperty({
+    description: '게시글 작성자 ID',
+    example: 1,
+  })
+  @Column({ nullable: true })
+  authorId: number;
+
+  @ApiProperty({
     description: '게시글 제목',
     example: '게시글 제목',
     type: String,

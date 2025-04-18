@@ -11,6 +11,7 @@ import {
   BadRequestException,
   InternalServerErrorException,
   NotFoundException,
+  Req,
 } from '@nestjs/common';
 import { CommentsService } from '../services/comments.service';
 import { CommentDto } from '../dtos/comment.dto';
@@ -19,6 +20,7 @@ import { PaginationDto } from 'src/common/dto/pagination.dto';
 import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Comment } from '../entities/comment.entity';
 import { PaginatedResponseDto } from 'src/common/utils/pagination.util';
+import { AuthenticatedRequest } from 'src/types/index';
 
 @Controller('posts/:parentId/comments')
 @ApiTags('댓글')
@@ -47,10 +49,12 @@ export class CommentsController {
     type: InternalServerErrorException,
   })
   create(
+    @Req() req: AuthenticatedRequest,
     @Param('parentId') parentId: number,
     @Body() createCommentDto: CommentDto,
   ) {
-    return this.commentsService.create(+parentId, createCommentDto);
+    const userId = req.user.sub;
+    return this.commentsService.create(+parentId, +userId, createCommentDto);
   }
 
   @Get()
@@ -151,11 +155,18 @@ export class CommentsController {
     type: InternalServerErrorException,
   })
   update(
+    @Req() req: AuthenticatedRequest,
     @Param('parentId') parentId: number,
     @Param('id') id: number,
     @Body() updateCommentDto: CommentDto,
   ) {
-    return this.commentsService.update(+parentId, +id, updateCommentDto);
+    const userId = req.user.sub;
+    return this.commentsService.update(
+      +parentId,
+      +id,
+      +userId,
+      updateCommentDto,
+    );
   }
 
   @Delete(':id')
@@ -186,7 +197,12 @@ export class CommentsController {
     example: new InternalServerErrorException(),
     type: InternalServerErrorException,
   })
-  delete(@Param('parentId') parentId: number, @Param('id') id: number) {
-    return this.commentsService.delete(+parentId, +id);
+  delete(
+    @Req() req: AuthenticatedRequest,
+    @Param('parentId') parentId: number,
+    @Param('id') id: number,
+  ) {
+    const userId = req.user.sub;
+    return this.commentsService.delete(+parentId, +id, +userId);
   }
 }

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -18,7 +19,7 @@ export class PostsService {
     private postsRepository: Repository<Post>,
   ) {}
 
-  async create(createPostDto: CreatePostDto): Promise<Post> {
+  async create(userId: number, createPostDto: CreatePostDto): Promise<Post> {
     const { title, content } = createPostDto;
     if (!title || !content) {
       throw new BadRequestException(`No title or content.`);
@@ -28,7 +29,10 @@ export class PostsService {
       throw new BadRequestException(`Content must be at least 10 characters.`);
     }
 
-    const post = this.postsRepository.create(createPostDto);
+    const post = this.postsRepository.create({
+      ...createPostDto,
+      authorId: userId,
+    });
 
     const savedPost = this.postsRepository.save(post);
     return savedPost;
@@ -63,8 +67,18 @@ export class PostsService {
     return post;
   }
 
-  async update(id: number, updatePostDto: UpdatePostDto): Promise<Post> {
+  async update(
+    id: number,
+    userId: number,
+    updatePostDto: UpdatePostDto,
+  ): Promise<Post> {
     const { title, content } = updatePostDto;
+    const post = await this.findOne(id);
+
+    if (post.authorId !== userId) {
+      throw new ForbiddenException('게시물을 수정할 권한이 없습니다.');
+    }
+
     if (title && title.length < 5) {
       throw new BadRequestException(`Title must be at least 5 characters.`);
     }
@@ -73,14 +87,16 @@ export class PostsService {
       throw new BadRequestException(`Content must be at least 10 characters.`);
     }
 
-    const post = await this.findOne(id);
-
     Object.assign(post, updatePostDto);
     return this.postsRepository.save(post);
   }
 
-  async delete(id: number): Promise<void> {
+  async delete(id: number, userId: number): Promise<void> {
     const post = await this.findOne(id);
+
+    if (post.authorId !== userId) {
+      throw new ForbiddenException('게시물을 삭제할 권한이 없습니다.');
+    }
 
     await this.postsRepository.update(id, { isDeleted: true });
   }

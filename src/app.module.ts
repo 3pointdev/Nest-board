@@ -5,6 +5,8 @@ import { typeOrmConfig } from './database/typeorm.config';
 import { PostsModule } from './modules/posts/posts.module';
 import { CommentsModule } from './modules/comments/comments.module';
 import { PingModule } from './modules/ping/ping.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { UserModule } from './modules/user/user.module';
 
 @Module({
   imports: [
@@ -20,6 +22,8 @@ import { PingModule } from './modules/ping/ping.module';
     PingModule,
     PostsModule,
     CommentsModule,
+    AuthModule,
+    UserModule,
   ],
 })
 export class AppModule {}

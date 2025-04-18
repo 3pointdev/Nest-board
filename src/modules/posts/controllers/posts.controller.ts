@@ -11,18 +11,30 @@ import {
   BadRequestException,
   NotFoundException,
   InternalServerErrorException,
+  UseGuards,
+  Req,
 } from '@nestjs/common';
 import { PostsService } from '../services/posts.service';
 import { CreatePostDto } from '../dtos/create-post.dto';
 import { UpdatePostDto } from '../dtos/update-post.dto';
 import { ValidationPipe } from '../../../common/pipes/validation.pipe';
 import { PaginationDto } from 'src/common/dto/pagination.dto';
-import { ApiOperation, ApiParam, ApiResponse, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { Post as PostEntity } from '../entities/post.entity';
 import { PaginatedResponseDto } from 'src/common/utils/pagination.util';
+import { JwtAuthGuard } from 'src/modules/auth/jwt-auth.guard';
+import { AuthenticatedRequest } from 'src/types/index';
 
 @Controller('posts')
 @ApiTags('게시글')
+@UseGuards(JwtAuthGuard) // 모든 엔드포인트에 JWT 인증 적용
+@ApiBearerAuth() // Swagger에 Bearer 토큰 요구 표시
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
@@ -42,8 +54,12 @@ export class PostsController {
     example: new InternalServerErrorException(),
     type: InternalServerErrorException,
   })
-  create(@Body() createPostDto: CreatePostDto) {
-    return this.postsService.create(createPostDto);
+  async create(
+    @Req() req: AuthenticatedRequest,
+    @Body() createPostDto: CreatePostDto,
+  ) {
+    const userId = req.user.sub;
+    return this.postsService.create(userId, createPostDto);
   }
 
   @Get()
@@ -124,8 +140,13 @@ export class PostsController {
     type: InternalServerErrorException,
   })
   @UsePipes(new ValidationPipe())
-  update(@Param('id') id: string, @Body() updatePostDto: UpdatePostDto) {
-    return this.postsService.update(+id, updatePostDto);
+  update(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() updatePostDto: UpdatePostDto,
+  ) {
+    const userId = req.user.sub;
+    return this.postsService.update(+id, userId, updatePostDto);
   }
 
   @Delete(':id')
@@ -155,7 +176,8 @@ export class PostsController {
     example: new InternalServerErrorException(),
     type: InternalServerErrorException,
   })
-  delete(@Param('id') id: string) {
-    return this.postsService.delete(+id);
+  delete(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
+    const userId = req.user.sub;
+    return this.postsService.delete(+id, userId);
   }
 }

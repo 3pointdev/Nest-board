@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Comment } from '../entities/comment.entity';
@@ -17,6 +21,7 @@ export class CommentsService {
 
   async create(
     parentId: number,
+    userId: number,
     createCommentDto: CommentDto,
   ): Promise<Comment> {
     const { content } = createCommentDto;
@@ -32,11 +37,16 @@ export class CommentsService {
     const comment = this.commentsRepository.create({
       ...createCommentDto,
       post,
+      authorId: userId,
     });
 
     const savedComment = await this.commentsRepository.save(comment);
 
-    return { id: savedComment.id, content: savedComment.content };
+    return {
+      id: savedComment.id,
+      content: savedComment.content,
+      authorId: savedComment.authorId,
+    };
   }
 
   async findAll(
@@ -69,9 +79,15 @@ export class CommentsService {
   async update(
     parentId: number,
     id: number,
+    userId: number,
     updateCommentDto: CommentDto,
   ): Promise<Comment> {
     const { content } = updateCommentDto;
+    const comment = await this.findOne(parentId, id);
+
+    if (comment.authorId !== userId) {
+      throw new ForbiddenException('댓글을 수정할 권한이 없습니다.');
+    }
 
     if (!content) {
       throw new NotFoundException(`No content.`);
@@ -81,15 +97,19 @@ export class CommentsService {
       throw new NotFoundException(`Content must be at least 5 characters.`);
     }
 
-    const comment = await this.findOne(parentId, id);
-
     Object.assign(comment, updateCommentDto);
 
     return this.commentsRepository.save(comment);
   }
 
-  async delete(parentId: number, id: number): Promise<void> {
-    await this.postsService.findOne(parentId);
+  async delete(parentId: number, id: number, userId: number): Promise<void> {
+    const post = await this.postsService.findOne(parentId);
+    const comment = await this.findOne(parentId, id);
+
+    if (comment.authorId !== userId) {
+      throw new ForbiddenException('댓글을 수정할 권한이 없습니다.');
+    }
+
     await this.commentsRepository.update(id, { isDeleted: true });
   }
 }

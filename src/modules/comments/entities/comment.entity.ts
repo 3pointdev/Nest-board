@@ -13,6 +13,13 @@ export class Comment {
   id: number;
 
   @ApiProperty({
+    description: '댓글 작성자 ID',
+    example: 1,
+  })
+  @Column({ nullable: true })
+  authorId: number;
+
+  @ApiProperty({
     description: '댓글 내용',
     example: '댓글 내용 댓글 내용',
     type: String,
