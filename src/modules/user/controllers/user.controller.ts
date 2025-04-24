@@ -22,6 +22,7 @@ import {
   FindMeSwagger,
   RegisterSwagger,
 } from '../swagger/user.swagger';
+import { TokenModel } from 'src/common/models/token.model';
 
 @ApiTags('사용자')
 @Controller('users')
@@ -31,10 +32,8 @@ export class UserController {
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
   @RegisterSwagger()
-  async register(
-    @Body() userDto: UserDto,
-  ): Promise<{ accessToken: string; refreshToken: string }> {
-    const { user, accessToken, refreshToken } =
+  async register(@Body() userDto: UserDto): Promise<TokenModel> {
+    const { accessToken, refreshToken } =
       await this.userService.createUser(userDto);
     return { accessToken, refreshToken };
   }

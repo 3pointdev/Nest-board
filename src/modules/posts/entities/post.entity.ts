@@ -1,7 +1,16 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
-import { Comment } from '../../comments/entities/comment.entity';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  OneToMany,
+  CreateDateColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { User } from 'src/modules/user/entities/user.entity';
+import { Comment } from 'src/modules/comments/entities/comment.entity';
 
 @Entity()
 export class Post {
@@ -11,13 +20,6 @@ export class Post {
   })
   @PrimaryGeneratedColumn()
   id: number;
-
-  @ApiProperty({
-    description: '게시글 작성자 ID',
-    example: 1,
-  })
-  @Column({ nullable: true })
-  authorId: number;
 
   @ApiProperty({
     description: '게시글 제목',
@@ -33,17 +35,24 @@ export class Post {
     type: String,
   })
   @Column()
+  @Exclude({ toPlainOnly: true })
   content: string;
+
+  @ManyToOne(() => User, (user) => user.posts, { eager: true })
+  author: User;
+
+  @OneToMany(() => Comment, (comment) => comment.parent)
+  comments: Comment[];
+
+  @Column({ nullable: true })
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @Column({ nullable: true })
+  @UpdateDateColumn()
+  updatedAt: Date;
 
   @Column({ default: false })
   @Exclude()
   isDeleted: boolean;
-
-  @ApiProperty({
-    description: '게시글 내 댓글 목록',
-    type: () => Comment,
-    isArray: true,
-  })
-  @OneToMany(() => Comment, (comment) => comment.post)
-  comments: Comment[];
 }

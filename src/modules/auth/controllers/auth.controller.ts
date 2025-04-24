@@ -22,7 +22,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @AuthRefreshSwagger()
   async refresh(
-    @Body('refreshToken') refreshToken: string,
+    @Body('refreshToken') { refreshToken }: { refreshToken: string },
   ): Promise<{ accessToken: string; refreshToken: string }> {
     return this.authService.refreshToken(refreshToken);
   }

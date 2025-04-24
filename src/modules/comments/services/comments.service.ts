@@ -1,115 +1,43 @@
-import {
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Comment } from '../entities/comment.entity';
-import { CommentDto } from '../dtos/comment.dto';
 import { PostsService } from '../../posts/services/posts.service';
-import { PaginationDto } from 'src/common/dto/pagination.dto';
-import { paginate, PaginatedResponse } from 'src/common/utils/pagination.util';
+import { PaginationDto } from 'src/common/dtos/pagination.dto';
+import { Post } from 'src/modules/posts/entities/post.entity';
 
 @Injectable()
 export class CommentsService {
   constructor(
     @InjectRepository(Comment)
     private commentsRepository: Repository<Comment>,
+    @InjectRepository(Post) private postRepository: Repository<Post>,
+    @Inject(forwardRef(() => PostsService))
     private postsService: PostsService,
   ) {}
 
   async create(
     parentId: number,
     userId: number,
-    createCommentDto: CommentDto,
-  ): Promise<Comment> {
-    const { content } = createCommentDto;
-    if (!content) {
-      throw new NotFoundException(`No content.`);
-    }
-    if (content.length < 5) {
-      throw new NotFoundException(`Content must be at least 5 characters.`);
-    }
-
-    const post = await this.postsService.findOne(parentId);
-
-    const comment = this.commentsRepository.create({
-      ...createCommentDto,
-      post,
-      authorId: userId,
-    });
-
-    const savedComment = await this.commentsRepository.save(comment);
-
-    return {
-      id: savedComment.id,
-      content: savedComment.content,
-      authorId: savedComment.authorId,
-    };
+    createCommentDto: any,
+  ): Promise<any> {
+    return {};
   }
 
-  async findAll(
-    parentId: number,
-    paginationDto: PaginationDto,
-  ): Promise<PaginatedResponse<Comment>> {
-    await this.postsService.findOne(+parentId);
-    return paginate<Comment>(this.commentsRepository, paginationDto, {
-      where: { post: { id: parentId, isDeleted: false }, isDeleted: false },
-      order: { id: 'DESC' },
-    });
-  }
-
-  async findOne(parentId: number, id: number): Promise<Comment> {
-    await this.postsService.findOne(parentId);
-
-    const comment = await this.commentsRepository.findOne({
-      where: { id, isDeleted: false },
-    });
-
-    if (!comment || comment.isDeleted) {
-      throw new NotFoundException(
-        `This comment does not exist or has already been deleted.`,
-      );
-    }
-
-    return comment;
+  async findAll(parentId: number, paginationDto: PaginationDto): Promise<any> {
+    return [];
   }
 
   async update(
     parentId: number,
     id: number,
     userId: number,
-    updateCommentDto: CommentDto,
-  ): Promise<Comment> {
-    const { content } = updateCommentDto;
-    const comment = await this.findOne(parentId, id);
-
-    if (comment.authorId !== userId) {
-      throw new ForbiddenException('댓글을 수정할 권한이 없습니다.');
-    }
-
-    if (!content) {
-      throw new NotFoundException(`No content.`);
-    }
-
-    if (content && content.length < 5) {
-      throw new NotFoundException(`Content must be at least 5 characters.`);
-    }
-
-    Object.assign(comment, updateCommentDto);
-
-    return this.commentsRepository.save(comment);
+    updateCommentDto: any,
+  ): Promise<any> {
+    return {};
   }
 
   async delete(parentId: number, id: number, userId: number): Promise<void> {
-    const post = await this.postsService.findOne(parentId);
-    const comment = await this.findOne(parentId, id);
-
-    if (comment.authorId !== userId) {
-      throw new ForbiddenException('댓글을 수정할 권한이 없습니다.');
-    }
-
-    await this.commentsRepository.update(id, { isDeleted: true });
+    return;
   }
 }

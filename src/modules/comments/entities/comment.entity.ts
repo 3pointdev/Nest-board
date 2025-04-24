@@ -1,7 +1,8 @@
 import { Entity, Column, PrimaryGeneratedColumn, ManyToOne } from 'typeorm';
-import { Post } from 'src/modules/posts/entities/post.entity';
 import { Exclude } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import { User } from 'src/modules/user/entities/user.entity';
+import { Post } from 'src/modules/posts/entities/post.entity';
 
 @Entity()
 export class Comment {
@@ -13,13 +14,6 @@ export class Comment {
   id: number;
 
   @ApiProperty({
-    description: '댓글 작성자 ID',
-    example: 1,
-  })
-  @Column({ nullable: true })
-  authorId: number;
-
-  @ApiProperty({
     description: '댓글 내용',
     example: '댓글 내용 댓글 내용',
     type: String,
@@ -27,14 +21,19 @@ export class Comment {
   @Column()
   content: string;
 
+  @Column({ nullable: true })
+  createdAt: Date;
+
+  @Column({ nullable: true })
+  updatedAt: Date;
+
   @Column({ default: false })
   @Exclude()
   isDeleted?: boolean;
 
-  @ApiProperty({
-    description: '댓글이 속한 게시글',
-    type: () => Post,
-  })
+  @ManyToOne(() => User, (user) => user.comments)
+  author: User;
+
   @ManyToOne(() => Post, (post) => post.comments)
-  post?: Post;
+  parent: Post;
 }

@@ -7,97 +7,212 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Post } from '../entities/post.entity';
-import { CreatePostDto } from '../dtos/create-post.dto';
-import { UpdatePostDto } from '../dtos/update-post.dto';
-import { PaginationDto } from 'src/common/dto/pagination.dto';
+import { PaginationDto } from 'src/common/dtos/pagination.dto';
+import { Comment } from 'src/modules/comments/entities/comment.entity';
+import { plainToInstance } from 'class-transformer';
+import PostModel from '../models/post.model';
 import { paginate, PaginatedResponse } from 'src/common/utils/pagination.util';
+import PostListModel from '../models/postList.model';
+import CreatePostDto from '../dtos/createPost.dto';
+import { User } from 'src/modules/user/entities/user.entity';
 
 @Injectable()
 export class PostsService {
   constructor(
     @InjectRepository(Post)
-    private postsRepository: Repository<Post>,
+    private postRepository: Repository<Post>,
+
+    @InjectRepository(Comment)
+    private commentRepository: Repository<Comment>,
+
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
   ) {}
 
-  async create(userId: number, createPostDto: CreatePostDto): Promise<Post> {
-    const { title, content } = createPostDto;
-    if (!title || !content) {
-      throw new BadRequestException(`No title or content.`);
+  async create(
+    userId: number,
+    { title, content }: CreatePostDto,
+  ): Promise<any> {
+    if (!title) {
+      throw new BadRequestException('제목은 필수 입니다.');
+    }
+    if (!content) {
+      throw new BadRequestException('내용은 필수 입니다.');
     }
 
-    if (content.length < 10) {
-      throw new BadRequestException(`Content must be at least 10 characters.`);
-    }
-
-    const post = this.postsRepository.create({
-      ...createPostDto,
-      authorId: userId,
+    const user = await this.userRepository.findOne({
+      where: {
+        id: userId,
+        isDeleted: false,
+      },
     });
 
-    const savedPost = this.postsRepository.save(post);
-    return savedPost;
+    if (!user) {
+      throw new NotFoundException(
+        '탈퇴한 사용자 이거나 잘못된 사용자의 접근입니다.',
+      );
+    }
+
+    const post = this.postRepository.create({
+      title,
+      content,
+      author: user,
+    });
+
+    const response = await this.postRepository.save(post);
+
+    return plainToInstance(PostModel, response, {
+      excludeExtraneousValues: true,
+    });
   }
 
   async findAll(
     paginationDto: PaginationDto,
-  ): Promise<PaginatedResponse<Post>> {
-    return paginate<Post>(this.postsRepository, paginationDto, {
-      where: { isDeleted: false },
-      order: { id: 'DESC' },
-    });
+  ): Promise<PaginatedResponse<PostListModel>> {
+    const pagination = await paginate(this.postRepository, paginationDto);
+
+    const response = {
+      ...pagination,
+      list: pagination.list.map((post) =>
+        plainToInstance(PostListModel, post, {
+          excludeExtraneousValues: true,
+        }),
+      ),
+    };
+
+    return response;
   }
 
-  async findOne(id: number): Promise<Post> {
-    const post = await this.postsRepository
-      .createQueryBuilder('post')
-      .leftJoinAndSelect('post.comments', 'comments')
-      .where('post.id = :id', { id })
-      .andWhere('post.isDeleted = :isDeleted', { isDeleted: false })
-      .andWhere('comments.isDeleted = :commentIsDeleted', {
-        commentIsDeleted: false,
-      })
-      .getOne();
+  async findOne(id: number): Promise<PostModel> {
+    if (!id) {
+      throw new BadRequestException('아이디는 필수 입니다.');
+    }
+
+    const post = await this.postRepository.findOne({
+      where: {
+        id: id,
+        isDeleted: false,
+      },
+      relations: ['author'],
+    });
 
     if (!post) {
       throw new NotFoundException(
-        `This post does not exist or has already been deleted.`,
+        '게시글이 존재하지 않거나 이미 삭제되었습니다.',
       );
     }
 
-    return post;
+    const comments = await this.commentRepository.find({
+      where: {
+        parent: { id: id },
+        isDeleted: false,
+      },
+      relations: ['author', 'parent'],
+    });
+
+    return plainToInstance(
+      PostModel,
+      { ...post, comments: comments },
+      {
+        excludeExtraneousValues: true,
+      },
+    );
   }
 
   async update(
     id: number,
     userId: number,
-    updatePostDto: UpdatePostDto,
-  ): Promise<Post> {
-    const { title, content } = updatePostDto;
-    const post = await this.findOne(id);
-
-    if (post.authorId !== userId) {
-      throw new ForbiddenException('게시물을 수정할 권한이 없습니다.');
+    { title, content }: CreatePostDto,
+  ): Promise<any> {
+    if (!title) {
+      throw new BadRequestException('제목은 필수 입니다.');
     }
 
-    if (title && title.length < 5) {
-      throw new BadRequestException(`Title must be at least 5 characters.`);
+    if (!content) {
+      throw new BadRequestException('내용은 필수 입니다.');
     }
 
-    if (content && content.length < 10) {
-      throw new BadRequestException(`Content must be at least 10 characters.`);
+    const user = await this.userRepository.findOne({
+      where: {
+        id: userId,
+        isDeleted: false,
+      },
+    });
+
+    if (!user) {
+      throw new ForbiddenException(
+        '탈퇴한 사용자 이거나 잘못된 사용자의 접근입니다.',
+      );
     }
 
-    Object.assign(post, updatePostDto);
-    return this.postsRepository.save(post);
+    const post = await this.postRepository.findOne({
+      where: {
+        id: id,
+        isDeleted: false,
+      },
+      relations: ['author', 'comments'],
+    });
+
+    if (!post) {
+      throw new NotFoundException('게시글이 존재하지 않거나 삭제되었습니다.');
+    }
+
+    if (post.author.id !== userId) {
+      throw new ForbiddenException('게시글 수정 권한이 없습니다.');
+    }
+
+    const updatedPost = await this.postRepository.save({
+      ...post,
+      title,
+      content,
+    });
+
+    return plainToInstance(PostModel, updatedPost, {
+      excludeExtraneousValues: true,
+    });
   }
 
   async delete(id: number, userId: number): Promise<void> {
-    const post = await this.findOne(id);
-
-    if (post.authorId !== userId) {
-      throw new ForbiddenException('게시물을 삭제할 권한이 없습니다.');
+    if (!id) {
+      throw new BadRequestException('아이디는 필수 입니다.');
     }
 
-    await this.postsRepository.update(id, { isDeleted: true });
+    const user = await this.userRepository.findOne({
+      where: {
+        id: userId,
+        isDeleted: false,
+      },
+    });
+
+    if (!user) {
+      throw new ForbiddenException(
+        '탈퇴한 사용자 이거나 잘못된 사용자의 접근입니다.',
+      );
+    }
+
+    const post = await this.postRepository.findOne({
+      where: {
+        id: id,
+        isDeleted: false,
+      },
+      relations: ['author'],
+    });
+
+    if (!post) {
+      throw new NotFoundException(
+        '게시글이 존재하지 않거나 이미 삭제되었습니다.',
+      );
+    }
+
+    if (post.author.id !== userId) {
+      throw new ForbiddenException('게시글 삭제 권한이 없습니다.');
+    }
+
+    await this.postRepository.save({
+      ...post,
+      isDeleted: true,
+    });
+
+    return;
   }
 }

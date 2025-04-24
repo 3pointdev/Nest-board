@@ -1,4 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { plainToInstance } from 'class-transformer';
+import { PaginationModel } from '../models/pagination.model';
 
 export interface PaginatedResponse<T> {
   list: T[];
@@ -29,24 +31,29 @@ export class PaginatedResponseDto<T> {
 export async function paginate<T>(
   repository: any,
   paginationDto: { page: number; limit: number },
-  options: { where?: any; relations?: string[]; order?: any } = {},
+  options: {
+    where?: any;
+    relations?: string[];
+    order?: any;
+    select?: any;
+  } = {},
 ): Promise<PaginatedResponse<T>> {
   const { page = 1, limit = 5 } = paginationDto;
 
   const skip = (page - 1) * limit;
 
   const [data, total] = await repository.findAndCount({
-    where: options.where,
+    where: { ...options.where, isDeleted: false },
     relations: options.relations,
     skip,
     take: limit,
     order: options.order || { id: 'DESC' },
   });
 
-  return {
+  return plainToInstance(PaginationModel<T>, {
     list: data,
     total,
     page,
     limit,
-  };
+  });
 }
